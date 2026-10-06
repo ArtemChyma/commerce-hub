@@ -46,7 +46,7 @@ public class Inventory {
         return getStock(productId) >= quantity;
     }
 
-    public void removeStock(UUID productId, int quantity) {
+    public synchronized void removeStock(UUID productId, int quantity) {
         validateProductId(productId);
         validateQuantity(quantity);
         stock.compute(productId, (id, currentState) -> {
@@ -62,7 +62,23 @@ public class Inventory {
         });
     }
 
-
+    public synchronized void removeStock(
+            Map<UUID, Integer> requestedItems
+    ) {
+        if (requestedItems == null) {
+            throw new IllegalArgumentException("Items must not be null");
+        }
+        for (Map.Entry<UUID, Integer> entry : requestedItems.entrySet()) {
+            validateProductId(entry.getKey());
+            validateQuantity(entry.getValue());
+            if (!isAvailable(entry.getKey(), entry.getValue())) {
+                throw new IllegalStateException("Not enough items in the inventory");
+            }
+        }
+        for (Map.Entry<UUID, Integer> entry : requestedItems.entrySet()) {
+            removeStock(entry.getKey(), entry.getValue());
+        }
+    }
     private static void validateProductId(UUID productId) {
         if (productId == null) {
             throw new IllegalArgumentException("product id must not be null");
